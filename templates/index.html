@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block content %}
+
+<section class="hero">
+  <h1>Is this news real or fake?</h1>
+  <p>Paste a headline and article. A machine-learning model trained on {{ "{:,}".format(metrics.sizes.train) if metrics else "24,000+" }} news articles
+     predicts whether it is <b>real</b> or <b>fake</b>, NLP shows <i>why</i>, and Generative AI explains the result in plain English.</p>
+</section>
+
+<ol class="pipeline" id="pipeline">
+  <li data-step="input">Input</li>
+  <li data-step="pre">Preprocessing</li>
+  <li data-step="tfidf">TF-IDF features</li>
+  <li data-step="ml">ML classifier</li>
+  <li data-step="nlp">NLP / Comprehend</li>
+  <li data-step="gen">Gen AI / Bedrock</li>
+  <li data-step="out">Result</li>
+</ol>
+
+<section class="card input-card">
+  <label for="title">Headline</label>
+  <input id="title" type="text" placeholder="e.g. BREAKING: You won't believe what the senator just said!">
+  <label for="text">Article text</label>
+  <textarea id="text" rows="9" placeholder="Paste the news article here (at least 20 words)…"></textarea>
+  <div class="actions">
+    <button class="btn ghost" id="sampleFake">Load a FAKE sample</button>
+    <button class="btn ghost" id="sampleReal">Load a REAL sample</button>
+    <button class="btn ghost" id="clear">Clear</button>
+    <span class="spacer"></span>
+    <span id="sampleNote" class="muted"></span>
+    <button class="btn primary" id="analyze">Analyze article →</button>
+  </div>
+  <p id="error" class="error" hidden></p>
+</section>
+
+<section id="results" hidden>
+  <div class="grid two">
+    <div class="card verdict" id="verdictCard">
+      <div class="verdict-label">Prediction</div>
+      <div class="verdict-value" id="verdict">–</div>
+      <div class="verdict-conf"><span id="conf">–</span>% confidence</div>
+      <div class="split">
+        <div class="split-fake" id="barFake"></div>
+        <div class="split-real" id="barReal"></div>
+      </div>
+      <div class="split-legend"><span>Fake <b id="pFake"></b>%</span><span>Real <b id="pReal"></b>%</span></div>
+      <div id="actual" class="actual" hidden></div>
+      <div class="muted small">Model: <span id="modelName"></span> · <span id="elapsed"></span> ms</div>
+    </div>
+
+    <div class="card">
+      <h3>Why? Words that influenced the model</h3>
+      <div class="grid two tight">
+        <div><h4 class="fake-t">Pushed towards FAKE</h4><ul class="bars" id="fakeWords"></ul></div>
+        <div><h4 class="real-t">Pushed towards REAL</h4><ul class="bars" id="realWords"></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card genai">
+    <div class="card-head">
+      <h3>✨ Generative AI explanation</h3>
+      <span class="tag" id="genSource"></span>
+    </div>
+    <p class="summary" id="genSummary"></p>
+    <div class="grid three tight">
+      <div><h4 class="fake-t">Red flags</h4><ul id="genRed"></ul></div>
+      <div><h4 class="real-t">Credibility signals</h4><ul id="genGood"></ul></div>
+      <div><h4>How to verify</h4><ul id="genVerify"></ul></div>
+    </div>
+    <p class="disclaimer" id="genDisclaimer"></p>
+    <details><summary>View the prompt sent to the foundation model (prompt engineering)</summary><pre id="genPrompt"></pre></details>
+  </div>
+
+  <div class="grid two">
+    <div class="card">
+      <h3>Writing-style signals (NLP)</h3>
+      <div class="stats" id="stats"></div>
+      <div id="clickbait"></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>Language, entities &amp; sentiment</h3><span class="tag" id="nlpSource"></span></div>
+      <p><b>Language:</b> <span id="lang"></span> <span id="sentiment"></span></p>
+      <div class="chips" id="entities"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Article with highlighted words</h3>
+    <p class="muted small"><mark class="hl-fake">red</mark> = pushed towards fake · <mark class="hl-real">green</mark> = pushed towards real</p>
+    <div class="article" id="highlighted"></div>
+    <details><summary>View preprocessed text (after cleaning &amp; stop-word removal)</summary><pre id="cleaned"></pre></details>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}<script src="{{ url_for('static', filename='app.js') }}"></script>{% endblock %}

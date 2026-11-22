@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}How it works – TruthLens{% endblock %}
+{% block content %}
+
+<section class="hero">
+  <h1>How it works &amp; results</h1>
+  <p>This case study combines what I learned in the three AWS Academy courses: <b>Machine Learning Foundations</b>,
+     <b>Machine Learning for NLP</b> and <b>Generative AI Foundations</b>.</p>
+</section>
+
+{% if metrics %}
+<div class="stats big">
+  <div class="stat"><b>{{ "%.1f"|format(metrics.test.accuracy*100) }}%</b><span>Test accuracy</span></div>
+  <div class="stat"><b>{{ "%.1f"|format(metrics.test.f1_fake*100) }}%</b><span>F1 score (fake class)</span></div>
+  <div class="stat"><b>{{ "{:,}".format(metrics.sizes.train + metrics.sizes.validation + metrics.sizes.test) }}</b><span>News articles used</span></div>
+  <div class="stat"><b>{{ "{:,}".format(metrics.vocabulary) }}</b><span>TF-IDF features</span></div>
+</div>
+{% endif %}
+
+<div class="card">
+  <h3>Problem statement</h3>
+  <p>Fake news spreads faster than corrections. Manually checking every article is impossible, so this project builds
+     a system that automatically classifies a news article as <b>real</b> or <b>fake</b>, shows which words and writing
+     patterns led to that decision, and uses a foundation model to explain the result in plain language with steps to verify it.</p>
+</div>
+
+<div class="card">
+  <h3>Course concepts used in this project</h3>
+  <table class="tbl">
+    <tr><th>Course</th><th>Concept</th><th>Where it is used</th></tr>
+    <tr><td rowspan="3">Machine Learning Foundations</td><td>Supervised classification, train / validation / test split</td><td><code>train.py</code> – 4 models trained on labelled data</td></tr>
+    <tr><td>Model evaluation (accuracy, precision, recall, F1, confusion matrix)</td><td>Results below</td></tr>
+    <tr><td>Avoiding data leakage</td><td>"(Reuters)" datelines and image credits removed before training</td></tr>
+    <tr><td rowspan="3">ML for Natural Language Processing</td><td>Text preprocessing (cleaning, stop words, contraction normalising)</td><td><code>src/preprocess.py</code></td></tr>
+    <tr><td>TF-IDF vectorisation (unigrams + bigrams)</td><td><code>train.py</code></td></tr>
+    <tr><td>Language detection, named-entity recognition, sentiment (Amazon Comprehend)</td><td><code>src/aws_services.py</code> (offline fallback in <code>src/analyzer.py</code>)</td></tr>
+    <tr><td rowspan="3">Generative AI Foundations</td><td>Foundation models on Amazon Bedrock (Converse API)</td><td><code>src/aws_services.py</code></td></tr>
+    <tr><td>Prompt engineering: role, context, instructions, output format</td><td><code>src/genai.py</code> – view the prompt on the detector page</td></tr>
+    <tr><td>Responsible AI: guardrails, no invented facts, disclaimer, input validation</td><td><code>src/genai.py</code>, <code>app.py</code></td></tr>
+  </table>
+</div>
+
+{% if metrics %}
+<div class="card">
+  <h3>Model comparison</h3>
+  <table class="tbl">
+    <tr><th>Model</th><th>Validation accuracy</th><th>Validation F1</th><th>Training time</th></tr>
+    {% for r in metrics.comparison %}
+    <tr class="{% if r.model == metrics.best_model %}best{% endif %}">
+      <td>{{ r.model }}{% if r.model == metrics.best_model %} ★ selected{% endif %}</td>
+      <td>{{ "%.2f"|format(r.val_accuracy*100) }}%</td>
+      <td>{{ "%.2f"|format(r.val_f1*100) }}%</td>
+      <td>{{ r.train_seconds }} s</td>
+    </tr>
+    {% endfor %}
+  </table>
+  <img class="plot" src="{{ url_for('static', filename='plots/model_comparison.png') }}" alt="Model comparison chart">
+</div>
+
+<div class="grid two">
+  <div class="card">
+    <h3>Test-set results ({{ "{:,}".format(metrics.sizes.test) }} unseen articles)</h3>
+    <table class="tbl">
+      <tr><th>Class</th><th>Precision</th><th>Recall</th><th>F1</th></tr>
+      <tr><td>FAKE</td><td>{{ "%.2f"|format(metrics.test.precision_fake*100) }}%</td><td>{{ "%.2f"|format(metrics.test.recall_fake*100) }}%</td><td>{{ "%.2f"|format(metrics.test.f1_fake*100) }}%</td></tr>
+      <tr><td>REAL</td><td>{{ "%.2f"|format(metrics.test.precision_real*100) }}%</td><td>{{ "%.2f"|format(metrics.test.recall_real*100) }}%</td><td>{{ "%.2f"|format(metrics.test.f1_real*100) }}%</td></tr>
+    </table>
+    <img class="plot" src="{{ url_for('static', filename='plots/confusion_matrix.png') }}" alt="Confusion matrix">
+  </div>
+  <div class="card">
+    <h3>What the model learned</h3>
+    <img class="plot" src="{{ url_for('static', filename='plots/top_words.png') }}" alt="Top words">
+    <p class="muted small">Fake articles in the data lean on sensational words ("breaking", "watch", "video"); real
+      articles use attribution ("said", "spokesman") and precise days and dates.</p>
+  </div>
+</div>
+{% endif %}
+
+<div class="card">
+  <h3>System architecture</h3>
+  <ol class="flow">
+    <li><b>User</b> pastes a headline + article on the web page (HTML/CSS/JS).</li>
+    <li><b>Flask API</b> (<code>/api/analyze</code>) validates the input (guardrail: minimum 20 words).</li>
+    <li><b>Preprocessing</b>: leakage removal, lower-casing, contraction normalising, stop-word removal.</li>
+    <li><b>TF-IDF + ML model</b> ({{ metrics.best_model if metrics else "best model" }}, calibrated) → FAKE/REAL + confidence; word weights explain the decision.</li>
+    <li><b>Amazon Comprehend</b> → language, entities, sentiment (offline rules if AWS is not connected).</li>
+    <li><b>Amazon Bedrock</b> → structured explanation from an engineered prompt (offline template if not connected).</li>
+    <li><b>Result page</b> shows verdict, highlighted words, style signals, entities and the AI explanation.</li>
+  </ol>
+  <p class="muted small">Current mode: {% if status.available %}AWS connected (region {{ status.region }}, model {{ status.bedrock_model }}){% else %}Offline ({{ status.reason }}){% endif %}.</p>
+</div>
+
+<div class="card">
+  <h3>Limitations</h3>
+  <ul>
+    <li>Trained on 2016–2017 (mostly US political) news, so it judges writing <i>style</i>, not whether facts are true.</li>
+    <li>Very short texts or other languages give unreliable results.</li>
+    <li>The output is a decision-support aid; a human should verify important claims.</li>
+  </ul>
+</div>
+{% endblock %}

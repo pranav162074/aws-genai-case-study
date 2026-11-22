@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}TruthLens – Fake News Detector{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header class="topbar">
+    <div class="wrap topbar-inner">
+      <a class="brand" href="/">
+        <span class="logo">TL</span>
+        <span>
+          <strong>TruthLens</strong>
+          <small>Fake News Detector · AWS Gen AI Internship Case Study</small>
+        </span>
+      </a>
+      <nav>
+        <a href="/" class="{% if request.path == '/' %}active{% endif %}">Detector</a>
+        <a href="/about" class="{% if request.path == '/about' %}active{% endif %}">How it works &amp; results</a>
+        {% if status.available %}
+          <span class="pill ok" title="Region {{ status.region }}">● AWS connected</span>
+        {% else %}
+          <span class="pill off" title="{{ status.reason }}">● Offline mode</span>
+        {% endif %}
+      </nav>
+    </div>
+  </header>
+  <main class="wrap">
+    {% block content %}{% endblock %}
+  </main>
+  <footer class="wrap foot">
+    G. Sai Pranav Reddy · 324103311015 · Dept. of Information Technology, GVPCE (A) ·
+    Built with Python, scikit-learn, Flask, Amazon Comprehend &amp; Amazon Bedrock
+  </footer>
+  {% block scripts %}{% endblock %}
+</body>
+</html>
